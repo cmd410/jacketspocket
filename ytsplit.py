@@ -14,6 +14,7 @@ youtube-dl and ffmpeg ARE REQUIRED"""
 import argparse
 import string
 import os.path as p
+from sys import platform
 from subprocess import call
 
 parser = argparse.ArgumentParser('ytsplit.py')
@@ -34,10 +35,21 @@ parser.add_argument('url', type=str,
 
 args = parser.parse_args()
 
+def format_filename(s):
+    if 'win' in platform.lower():
+        invalid_chars = '\\/:*?"<>|;'
+    else:
+        invalid_chars = '\\/'
+    filename = ''.join(c for c in s if c.lower() not in invalid_chars)
+    return filename
+
+
 
 def ytdl(artist, album, ext, url):
     outputfile = p.join(args.output, f'{artist} - {album}[ALBUM].webm')
-    if p.exists(outputfile): return outputfile
+    outputfile = format_filename(output_file)
+    if p.exists(outputfile):
+        return outputfile
     if call(['youtube-dl', '-f', 'bestaudio', '--output', outputfile, url]):
         raise Exception('Failed to download video.')
     return outputfile
@@ -75,6 +87,7 @@ def ffmpeg(file, timetags, artist, album):
         print()
         print(start, end, name, args.format)
         new_file_name = p.join(args.output, f'{artist} - {name}.{args.format}')
+        new_file_name = format_filename(new_file_name)
         meta = ['-metadata', f'author={artist!r}',
                 '-metadata', f'album_artist={artist!r}',
                 '-metadata', f'track={track_number:d}',
