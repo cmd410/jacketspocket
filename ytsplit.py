@@ -36,10 +36,8 @@ args = parser.parse_args()
 
 
 def format_filename(s):
-    valid_chars = "-_.([]/\\,) %s%s" % (string.ascii_letters, string.digits)
-    valid_chars += 'йцукенгшщзхъфывапролджэячсмитьбю'
-    filename = ''.join(c for c in s if c.lower() in valid_chars)
-    print(filename)
+    invalid_chars = '\\/:*?"<>|;'
+    filename = ''.join(c for c in s if c.lower() not in invalid_chars)
     return filename
 
 
