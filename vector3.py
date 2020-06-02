@@ -1,7 +1,11 @@
-from math import *
-from itertools import product
+from math import sqrt, floor, ceil, trunc, cos, sin, pi
 
 class Vec3:
+    def __eq__(self, other):
+        if isinstance(other, Vec3):
+            return all([self.x == other.x, self.y == other.y, self.z == other.z])
+        raise NotImplementedError(f'Unsupported type for operation: {type(other)}')
+    
     def distance_to(self, other):
         return sqrt(sum([pow(self.x - other.x, 2),
                          pow(self.y - other.y, 2),
@@ -15,10 +19,6 @@ class Vec3:
         return Vec3(t[0], t[1], t[2])
 
     @staticmethod
-    def from_dict(d):
-        return Vec3(d['x'], d['y'], d['z'])
-
-    @staticmethod
     def from_yaw(yaw: float):
         z = cos(yaw)
         x = -sin(yaw)
@@ -30,25 +30,13 @@ class Vec3:
                          pow(self.y, 2),
                          pow(self.z, 2)]))
 
-    def increment_neigbours(self):
-        offsets = product([0, 1, -1], repeat=3)
-        for i in offsets:
-            vec = Vec3.from_tuple(i) + self
-            if vec == self:
-                continue
-            yield vec
+    def __hash__(self):
+        return hash((self.x, self.y, self.z))
 
     def dot(self, other):
         return sum([self.x * other.x,
                     self.x * other.x,
                     self.x * other.x])
-
-    def cross(self, other):
-        if isinstance(other, Vec3):
-            return Vec3(self.y * other.z - self.z * other.y,
-                        self.z * other.x - self.x * other.z,
-                        self.x * other.y - self.y * other.x)
-        raise NotImplementedError(f'Unsupported type for operation: {type(other)}')
 
     def unit(self):
         l = self.length
@@ -58,15 +46,7 @@ class Vec3:
         self.x = x
         self.y = y
         self.z = z
-
-    def __eq__(self, other):
-        if isinstance(other, Vec3):
-            return all([self.x == other.x, self.y == other.y, self.z == other.z])
-        raise NotImplementedError(f'Unsupported type for operation: {type(other)}')
-
-    def __hash__(self):
-        return hash((self.x, self.y, self.z))
-
+    
     def __str__(self):
         return f'Vec3({self.x}, {self.y}, {self.z})'
 
@@ -177,6 +157,9 @@ class Vec3:
 
     def __abs__(self):
         return Vec3(abs(self.x), abs(self.y), abs(self.z))
+
+    def __invert__(self):
+        return Vec3(~self.x, ~self.y, ~self.z)
 
     def __neg__(self):
         return Vec3(-self.x, -self.y, -self.z)
