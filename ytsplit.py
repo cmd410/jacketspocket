@@ -1,5 +1,5 @@
 """Lil script in snake language to download a video(audio) from youtube
-And the RIP IT INTO TINY LITTLE PIECES according to timetags file you provide
+And then RIP IT INTO TINY LITTLE PIECES according to time_tags file you provide
 
 timetag format is:
 SECTION NAME 00:00:00
@@ -20,11 +20,11 @@ from subprocess import call
 parser = argparse.ArgumentParser('ytsplit.py')
 
 
-parser.add_argument('--timetags', '-t', type=str, required=True,
-                    help='File that contains timetags for video')
+parser.add_argument('--time_tags', '-t', type=str, required=True,
+                    help='File that contains time_tags for video')
 parser.add_argument('--author', '-au', type=str, default='unknown',
                     help='Author of the album.')
-parser.add_argument('--album', '-a', type=str, default='unknown',
+parser.add_argument('--album', '-al', type=str, default='unknown',
                     help='Album name')
 parser.add_argument('--output', '-o', type=str, default='./',
                    help='Output directory name, if not defined files are saved in current working directory.')
@@ -35,28 +35,38 @@ parser.add_argument('url', type=str,
 
 args = parser.parse_args()
 
-def format_filename(s):
+
+def format_file_name(s, remove_separators=False):
     if 'win' in platform.lower():
-        invalid_chars = '\\/:*?"<>|;'
+        invalid_chars = ':*?"<>|;'
     else:
-        invalid_chars = '\\/'
-    filename = ''.join(c for c in s if c.lower() not in invalid_chars)
-    return filename
+        invalid_chars = ''
+    if remove_separators:
+        invalid_chars += '\\/'
+    file_name = ''.join(c for c in s if c.lower() not in invalid_chars)
+    return file_name
+
+meta_author = args.author
+meta_album = args.album
+
+args.author = format_file_name(args.author, True)
+args.album = format_file_name(args.album, True)
+args.output = format_file_name(args.output)
+args.format = format_file_name(args.format).replace('.','')
 
 
-
-def ytdl(artist, album, ext, url):
-    outputfile = p.join(args.output, f'{artist} - {album}[ALBUM].webm')
-    outputfile = format_filename(output_file)
-    if p.exists(outputfile):
-        return outputfile
-    if call(['youtube-dl', '-f', 'bestaudio', '--output', outputfile, url]):
+def ytdl(author, album, ext, url):
+    output_file = p.join(args.output, f'{author} - {album}[ALBUM].webm')
+    if p.exists(output_file):
+        return output_file
+    if call(['youtube-dl', '-f', 'bestaudio', '--output', output_file, url]):
         raise Exception('Failed to download video.')
-    return outputfile
+    return output_file
 
-def get_timetags(filename):
+
+def get_time_tags(file_name):
     data = ''
-    with open(filename, 'r') as file:
+    with open(file_name, 'r') as file:
         data = file.read()
     if not data:
         raise ValueError
@@ -76,29 +86,31 @@ def get_timetags(filename):
     prev = None
     while tags:
         item = tags.pop()
-        intervals.append((item[0], prev, item[1]))
+        intervals.append((item[0], prev, format_file_name(item[1])))
         prev = item[0]
     return reversed(intervals)
 
-def ffmpeg(file, timetags, artist, album):
-    timetags = get_timetags(timetags)
+
+def ffmpeg(file, time_tags, author, album):
+    time_tags = get_time_tags(time_tags)
     track_number = 1
-    for track_number, (start, end, name) in enumerate(timetags, 1):
+    for track_number, (start, end, name) in enumerate(time_tags, 1):
         print()
         print(start, end, name, args.format)
-        new_file_name = p.join(args.output, f'{artist} - {name}.{args.format}')
-        new_file_name = format_filename(new_file_name)
-        meta = ['-metadata', f'author={artist!r}',
-                '-metadata', f'album_artist={artist!r}',
-                '-metadata', f'track={track_number:d}',
-                '-metadata', f'title={name!r}']
+        new_file_name = p.join(args.output, f'{author} - {name}.{args.format}')
+        meta = ['-metadata', f'artist={meta_author}',
+                '-metadata', f'album_artist={meta_author}',
+                '-metadata', f'track={track_number}',
+                '-metadata', f'title={name}',
+                '-metadata', f'album={meta_album}']
         if not end:
             call(['ffmpeg', '-i', file] + meta + ['-ss', start, new_file_name])
             continue
         call(['ffmpeg', '-i', file] + meta \
              + ['-ss', start, '-to', end, new_file_name])
 
+
 if __name__ == '__main__':
-    filename = ytdl(args.author, args.album, args.format, args.url)
-    ffmpeg(filename, args.timetags, args.author, args.album)
+    file_name = ytdl(args.author, args.album, args.format, args.url)
+    ffmpeg(file_name, args.time_tags, args.author, args.album)
 
