@@ -34,7 +34,7 @@ def read_presets(list_name):
             break
     if not exists(list_name):
         raise Exception(f'Preset file not found {list_name}')
-    preset_list = configparser.ConfigParser(allow_no_value=True)
+    preset_list = configparser.ConfigParser(allow_no_value=True, delimiters=('='))
     preset_list.optionxform = str
     preset_list.read(list_name)
     return preset_list
@@ -47,9 +47,7 @@ def main():
     presets = read_presets(args.list)
     preset = choose_preset(presets, args.preset_name)
     for i, site in enumerate(preset.keys()):
-        if site in {'http','https', 'file'}:
-            site = f'{site}:{preset[site]}'
-        else:
+        if site.split(':')[0] not in {'http','https', 'file'}:
             site = f'http://{site}'
         print(f'Opening {site}...')
         if i == 0:
