@@ -35,6 +35,7 @@ def read_presets(list_name):
     if not exists(list_name):
         raise Exception(f'Preset file not found {list_name}')
     preset_list = configparser.ConfigParser(allow_no_value=True)
+    preset_list.optionxform = str
     preset_list.read(list_name)
     return preset_list
 
