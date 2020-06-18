@@ -30,11 +30,14 @@ parser.add_argument('--output', '-o', type=str, default='./',
                    help='Output directory name, if not defined files are saved in current working directory.')
 parser.add_argument('--format', '-f', type=str, default='ogg',
                     help='Prefered format of output file')
+parser.add_argument('--start-number', '-sn', type=int, default=1,
+                    help='A number from which to start counting tracks in album, defaults to 1')
+parser.add_argument('-y', action='store_true',
+                    help='Overwrite existing files.')
 parser.add_argument('url', type=str,
                     help='Video url')
 
 args = parser.parse_args()
-
 
 def format_file_name(s, remove_separators=False):
     if 'win' in platform.lower():
@@ -100,14 +103,14 @@ def ffmpeg(file, time_tags, author, album):
         new_file_name = p.join(args.output, f'{author} - {name}.{args.format}')
         meta = ['-metadata', f'artist={meta_author}',
                 '-metadata', f'album_artist={meta_author}',
-                '-metadata', f'track={track_number}',
+                '-metadata', f'track={track_number + args.start_number - 1}',
                 '-metadata', f'title={name}',
                 '-metadata', f'album={meta_album}']
         if not end:
-            call(['ffmpeg', '-i', file] + meta + ['-ss', start, new_file_name])
+            print(new_file_name)
+            call(['ffmpeg', '-y' if args.y else '-n', '-i', file] + meta + ['-ss', start, new_file_name])
             continue
-        call(['ffmpeg', '-i', file] + meta \
-             + ['-ss', start, '-to', end, new_file_name])
+        call(['ffmpeg', '-y' if args.y else '-n', '-i', file] + meta + ['-ss', start, '-to', end, new_file_name])
 
 
 if __name__ == '__main__':
