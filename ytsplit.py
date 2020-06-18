@@ -12,7 +12,7 @@ doesent matter really where you put time.
 youtube-dl and ffmpeg ARE REQUIRED"""
 
 import argparse
-import string
+import re
 import os.path as p
 from sys import platform
 from subprocess import call
@@ -34,10 +34,60 @@ parser.add_argument('--start-number', '-sn', type=int, default=1,
                     help='A number from which to start counting tracks in album, defaults to 1')
 parser.add_argument('-y', action='store_true',
                     help='Overwrite existing files.')
+parser.add_argument('-d', '--deduce', type=str,
+                    help='''A format string of deducing author/song title/album from time tags list.
+                    Example: author - song [album]''')
 parser.add_argument('url', type=str,
                     help='Video url')
 
+
 args = parser.parse_args()
+
+
+def get_info(string: str):
+    deduce = args.deduce
+    m = dict()
+    for s in [r'author', r'song', r'album']:
+        match = re.search(s, deduce)
+        if match is None:
+            continue
+        m[s] = match.span()
+    l = sorted([i for i in m.items()], key=lambda item: item[1][0] + item[1][1])
+
+    indexes = (l[0][1][0], l[-1][1][1])
+    offsets = (indexes[0], len(deduce) - indexes[1])
+    splitters = []
+    for i, item in enumerate(l):
+        if i == len(l)-1:
+            break
+        sep = deduce[item[1][1]:l[i + 1][1][0]]
+        splitters.append(sep)
+
+    info = dict()
+    ending = deduce[-offsets[1]:]
+    if string.endswith(ending):
+        string = string[offsets[0]:-offsets[1]]
+    else:
+        string = string[offsets[0]:]
+    print(string)
+    sep_index = 0
+    for i in l:
+        subject = i[0]
+        if splitters:
+            sep = splitters.pop(0)
+            sep_index = string.find(sep)
+            if sep_index == -1:
+                value = string
+            else:
+                value = string[:sep_index]
+                string = string[sep_index+len(sep):]
+        else:
+            if sep_index == -1:
+                break
+            value = string[string.find(sep) + 1:]
+        info[subject] = value
+    return info
+
 
 def format_file_name(s, remove_separators=False):
     if 'win' in platform.lower():
@@ -56,6 +106,25 @@ args.author = format_file_name(args.author, True)
 args.album = format_file_name(args.album, True)
 args.output = format_file_name(args.output)
 args.format = format_file_name(args.format).replace('.','')
+
+
+def get_meta(name, n=1):
+    info = dict()
+    if not args.deduce:
+        meta = ['-metadata', f'artist={meta_author}',
+                '-metadata', f'album_artist={meta_author}',
+                '-metadata', f'track={n + args.start_number - 1}',
+                '-metadata', f'title={name}',
+                '-metadata', f'album={meta_album}']
+    else:
+        info = get_info(name)
+        meta = ['-metadata', f'artist={info.get("author") or "Unknown"}',
+                '-metadata', f'album_artist={info.get("author") or "Unknown"}',
+                '-metadata', f'track={n + args.start_number - 1}',
+                '-metadata', f'title={info.get("song") or "Unknown"}',
+                '-metadata', f'album={info.get("album") or "Unknown"}']
+
+    return meta, info
 
 
 def ytdl(author, album, ext, url):
@@ -100,12 +169,8 @@ def ffmpeg(file, time_tags, author, album):
     for track_number, (start, end, name) in enumerate(time_tags, 1):
         print()
         print(start, end, name, args.format)
-        new_file_name = p.join(args.output, f'{author} - {name}.{args.format}')
-        meta = ['-metadata', f'artist={meta_author}',
-                '-metadata', f'album_artist={meta_author}',
-                '-metadata', f'track={track_number + args.start_number - 1}',
-                '-metadata', f'title={name}',
-                '-metadata', f'album={meta_album}']
+        meta, info = get_meta(name, track_number)
+        new_file_name = p.join(args.output, f'{ info.get("author", author) } - {info.get("song", name)}.{args.format}')
         if not end:
             print(new_file_name)
             call(['ffmpeg', '-y' if args.y else '-n', '-i', file] + meta + ['-ss', start, new_file_name])
