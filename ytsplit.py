@@ -138,11 +138,17 @@ def ytdl(author, album, ext, url):
 
 def get_time_tags(file_name):
     data = ''
-    with open(file_name, 'r') as file:
+    with open(file_name, 'rb') as file:
         data = file.read()
     if not data:
         raise ValueError
-
+    
+    # Remove BOM
+    encoding = 'utf-8'
+    if data.startswith(bytes([0xEF, 0xBB, 0xBF])):
+        data = data[3:]
+    
+    data = data.decode(encoding)
     lines = data.split('\n')
     tags = []
     for track in lines:
