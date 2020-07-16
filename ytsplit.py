@@ -15,7 +15,7 @@ import argparse
 import re
 import os.path as p
 from sys import platform
-from subprocess import call
+from subprocess import call, Popen
 
 parser = argparse.ArgumentParser('ytsplit.py')
 
@@ -152,6 +152,7 @@ def get_time_tags(file_name):
     lines = data.split('\n')
     tags = []
     for track in lines:
+        track = track.strip()
         tag = ''
         for word in track.split(' '):
             if word.replace(':', '').isdigit():
@@ -177,12 +178,14 @@ def ffmpeg(file, time_tags, author, album):
         print(start, end, name, args.format)
         meta, info = get_meta(name, track_number)
         new_file_name = p.join(args.output, f'{ info.get("author", author) } - {info.get("song", name)}.{args.format}')
+        
         if not end:
-            print(new_file_name)
-            call(['ffmpeg', '-y' if args.y else '-n', '-i', file] + meta + ['-ss', start, new_file_name])
-            continue
-        call(['ffmpeg', '-y' if args.y else '-n', '-i', file] + meta + ['-ss', start, '-to', end, new_file_name])
-
+            cargs = ['ffmpeg', '-y' if args.y else '-n', '-i', file] + meta + ['-ss', start, new_file_name]
+        else:
+            cargs = ['ffmpeg', '-y' if args.y else '-n', '-i', file] + meta + ['-ss', start, '-to', end, new_file_name]
+        
+        proc = Popen(cargs, encoding='utf-8')
+        proc.wait()
 
 if __name__ == '__main__':
     file_name = ytdl(args.author, args.album, args.format, args.url)
