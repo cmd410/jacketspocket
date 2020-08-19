@@ -13,59 +13,67 @@ def throw(exc):
 
 class Switch:
 
-    __slots__ = ('test_case', 'args', 'kwargs', 'branches')
+    __slots__ = ('test_case',
+                 'is_type',
+                 'default',
+                 'args',
+                 'kwargs',
+                 'branches')
 
     def __init__(self, test_case, *args, **kwargs):
         self.test_case = test_case
+        self.is_type = isinstance(self.test_case, type)
         self.args = args
         self.kwargs = kwargs
         self.branches = []
+        self.default = None
+
+    def check_case(self, case, is_case_type):
+        if not (is_case_type or isinstance(case, SwitchType)):
+            return self.test_case == case
+        else:
+            if self.is_type:
+                return issubclass(self.test_case, case)
+            else:
+                return isinstance(self.test_case, case)
 
     def __enter__(self):
         def case(in_case, branch=None):
+            is_case_type = isinstance(in_case, type)
+
+            is_case_default = issubclass(in_case, Default) \
+                              if is_case_type \
+                              else isinstance(in_case, Default)
+            if not is_case_default:
+                is_the_case = self.check_case(in_case, is_case_type)
+            else:
+                is_the_case = False
+            
             if branch is None:
                 # Work as decorator
                 def decorator(func):
-                    self.branches.append((in_case, func))
+                    if is_the_case:
+                        self.branches.append(func)
+                    elif is_case_default:
+                        self.default = func
                     return func
                 return decorator
             
-            self.branches.append((in_case, branch))
+            if is_the_case:
+                self.branches.append(branch)
+            elif is_case_default:
+                self.default = branch
         return case
     
     def __exit__(self, *_):
-        default_branch = None
-        for case, branch in self.branches:
-            if isinstance(case, Default):
-                default_branch = branch
-                continue
-            elif isinstance(case, type):
-                if issubclass(case, Default):
-                    default_branch = branch
-                    continue
-            if isinstance(case, type) or isinstance(case, SwitchType):
-                if isinstance(self.test_case, type):
-
-                    if issubclass(self.test_case, case):
-                        branch(*self.args, **self.kwargs)
-                        break
-                else:
-
-                    if isinstance(self.test_case, case):
-                        branch(*self.args, **self.kwargs)
-                        break
-            else:
-
-                if self.test_case == case:
-                    branch(*self.args, **self.kwargs)
-                    break
-
-        if default_branch:
-            default_branch(*self.args, **self.kwargs)
+        if self.branches:
+            self.branches[0](*self.args, **self.kwargs)
+        elif self.default:
+            self.default(*self.args, **self.kwargs)
 
 
 class SwitchType:
-    pass
+    __slots__ = ()
 
 
 class Default(SwitchType):
@@ -84,18 +92,20 @@ class Shape(SwitchType):
         if not isinstance(instance, self.cls):
             return False
 
-        def collect_len(l):
+        def collect_len(l, limit=0):
+            if not limit:
+                return []
             length = [len(l)]
             child_len = []
             for i in l:
                 if isinstance(i, Sequence):
-                    child_len.extend(collect_len(i))
+                    child_len.extend(collect_len(i, limit-1))
             
             if child_len:
                 length.append(floor(sum(child_len)/len(child_len)))
             return length
         
-        lengths = tuple(collect_len(instance))
+        lengths = tuple(collect_len(instance, len(self.shape)))
 
         for l, s in zip(lengths, self.shape):
             if l != s:
