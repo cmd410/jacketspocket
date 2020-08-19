@@ -2,8 +2,6 @@
 """
 from typing import Sequence
 
-from math import floor
-
 
 def throw(exc):
     """Raise exceptions from lambdas
@@ -102,7 +100,7 @@ class Shape(SwitchType):
                     child_len.extend(collect_len(i, limit-1))
             
             if child_len:
-                length.append(floor(sum(child_len)/len(child_len)))
+                length.append(sum(child_len)//len(child_len))
             return length
         
         lengths = tuple(collect_len(instance, len(self.shape)))
