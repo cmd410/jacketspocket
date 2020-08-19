@@ -1,8 +1,7 @@
 """Implementing switchcase as context manager
 """
-from typing import Tuple, Sequence
+from typing import Sequence
 
-from collections import deque
 from math import floor
 
 
