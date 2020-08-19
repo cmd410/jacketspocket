@@ -22,7 +22,14 @@ class Switch:
         self.branches = []
 
     def __enter__(self):
-        def case(in_case, branch):
+        def case(in_case, branch=None):
+            if branch is None:
+                # Work as decorator
+                def decorator(func):
+                    self.branches.append((in_case, func))
+                    return func
+                return decorator
+            
             self.branches.append((in_case, branch))
         return case
     
