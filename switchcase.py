@@ -9,6 +9,12 @@ def throw(exc):
     raise exc
 
 
+class FoundBranch(Exception): 
+    """Exception to exit context early
+    """
+    pass
+
+
 class Switch:
 
     __slots__ = ('test_case',
@@ -37,6 +43,7 @@ class Switch:
 
     def __enter__(self):
         def case(in_case, branch=None):
+
             is_case_type = isinstance(in_case, type)
 
             is_case_default = issubclass(in_case, Default) \
@@ -52,6 +59,7 @@ class Switch:
                 def decorator(func):
                     if is_the_case:
                         self.branches.append(func)
+                        raise FoundBranch
                     elif is_case_default:
                         self.default = func
                     return func
@@ -59,15 +67,18 @@ class Switch:
             
             if is_the_case:
                 self.branches.append(branch)
+                raise FoundBranch
             elif is_case_default:
                 self.default = branch
         return case
     
-    def __exit__(self, *_):
+    def __exit__(self, exc_type, exc_val, traceback):
         if self.branches:
             self.branches[0](*self.args, **self.kwargs)
         elif self.default:
             self.default(*self.args, **self.kwargs)
+        if exc_type == FoundBranch:
+            return True
 
 
 class SwitchType:
