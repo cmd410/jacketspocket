@@ -103,7 +103,7 @@ class Shape(SwitchType):
                 length.append(sum(child_len)//len(child_len))
             return length
         
-        lengths = tuple(collect_len(instance, len(self.shape)))
+        lengths = collect_len(instance, len(self.shape))
 
         for l, s in zip(lengths, self.shape):
             if l != s:
